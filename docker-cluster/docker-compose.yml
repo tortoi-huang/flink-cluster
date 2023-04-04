@@ -1,0 +1,45 @@
+version: "3.9"
+services:
+  jobmanager:
+    #image: "flink:1.17.0-scala_2.12-java8"
+    # 官方镜像存在一个问题启动时会修改flink-conf.yaml文件中主机名、ip等相关属性，并且可能改的不对，另外还存在简单粗暴的将新属性追加到文件后面，前面的同名属性不删除的情况
+    image: "flink:1.17.0-huang_1"
+    build: .
+    ports:
+      - "8081:8081"
+    volumes:
+    # 看起来不支持挂载配置文件，容器启动时会自动修改了配置文件，挂载的文件也会被修改，暂时没找到原因，只能使用环境变量配置参数
+      - ./conf-master:/opt/flink-1.17.0/conf
+    # 截止1.17.0的版本，如果没有配置hostname，启动时容器会修改/opt/flink/conf/flink-conf.yaml文件的jobmanager.rpc.address属性为一串编码
+    hostname: jobmanager
+    networks: 
+      - flink-cluster
+    #command: [ "jobmanager"]
+    command: [ "/opt/flink-1.17.0/bin/jobmanager.sh","start-foreground"]
+    # environment:
+    #   - |
+    #     FLINK_PROPERTIES=
+    #     jobmanager.rpc.address: jobmanager
+    #     parallelism.default: 2
+  taskmanager:
+    #image: "flink:1.17.0-scala_2.12-java8"
+    image: "flink:1.17.0-huang_1"
+    depends_on:
+      - jobmanager
+    #command: taskmanager
+    volumes:
+    # 跟jobmanager一样配置就好
+      - ./conf-master:/opt/flink-1.17.0/conf
+    command: [ "/opt/flink-1.17.0/bin/taskmanager.sh","start-foreground"]
+    deploy: 
+      replicas: 2
+    # environment:
+    #   - |
+    #     FLINK_PROPERTIES=
+    #     jobmanager.rpc.address: jobmanager
+    #     taskmanager.numberOfTaskSlots: 2
+    networks: 
+      - flink-cluster
+networks:
+  flink-cluster: 
+  #  driver: overlay
